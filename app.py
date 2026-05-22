@@ -6,6 +6,7 @@ from google import genai
 from google.genai import types
 import sqlite3
 import os
+import datetime  # Incluído para gerenciar a data de criação dos leads
 
 app = FastAPI(title="ImobiAI - Engine de Qualificação")
 
@@ -79,8 +80,14 @@ async def receive_whatsapp_message(payload: WhatsAppMessage):
         # Cria ou localiza o lead pelo telefone
         lead = conn.execute("SELECT id FROM leads WHERE telefone = ?", (user_phone,)).fetchone()
         if not lead:
-            cursor = conn.execute("INSERT INTO leads (nome, telefone, status) VALUES (?, ?, 'progress')", 
-                                 (f"Lead {user_phone[-4:]}", user_phone))
+            # Captura a data e hora exata do momento do cadastro no formato padrão do SQLite
+            data_atual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Incluída a coluna data_criacao e o valor da data_atual no INSERT
+            cursor = conn.execute(
+                "INSERT INTO leads (nome, telefone, status, data_criacao) VALUES (?, ?, 'progress', ?)", 
+                (f"Lead {user_phone[-4:]}", user_phone, data_atual)
+            )
             lead_id = cursor.lastrowid
         else:
             lead_id = lead['id']
