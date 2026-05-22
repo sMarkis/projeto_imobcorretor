@@ -1,33 +1,45 @@
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from google import genai
 from google.genai import types
 import sqlite3
 import os
 import datetime
+import secrets
 
 app = FastAPI(title="ImobiAI - Engine de Qualificação")
 
-# Configurações de pastas
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# Configuração do Cliente Gemini (Busca a chave no cofre do Render)
 client = genai.Client()
 
-# Função auxiliar para conectar ao banco
+# --- FUNÇÃO AUXILIAR DE SEGURANÇA POR COOKIE ---
+def verificar_admin_cookie(request: Request):
+    # Busca o cookie de login chamado "imobia_session"
+    session = request.cookies.get("imobia_session")
+    if session != "authenticated_admin_2026":
+        # Se não estiver logado, lança o erro que redireciona para o login
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    return True
+
+# Tratamento para quando o usuário tenta acessar o painel sem estar logado
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    if exc.status_code == 401:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse("error.html", {"request": request, "detail": exc.detail})
+
 def get_db_connection():
     conn = sqlite3.connect('crm_bot.db')
-    conn.row_factory = sqlite3.Row  # Permite acessar colunas pelo nome
+    conn.row_factory = sqlite3.Row  
     return conn
 
-# --- FUNÇÃO DE INICIALIZAÇÃO AUTOMÁTICA DO BANCO ---
 def init_db_auto():
     conn = get_db_connection()
-    
-    # Garante que a tabela de imóveis exista
     conn.execute("""
         CREATE TABLE IF NOT EXISTS imoveis (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,8 +53,6 @@ def init_db_auto():
             data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
-    # Garante que a tabela de leads exista
     conn.execute("""
         CREATE TABLE IF NOT EXISTS leads (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,8 +62,6 @@ def init_db_auto():
             data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
-    # Garante que a tabela de histórico de chats exista com os nomes de colunas corretos
     conn.execute("""
         CREATE TABLE IF NOT EXISTS chat_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,41 +72,86 @@ def init_db_auto():
             FOREIGN KEY (lead_id) REFERENCES leads (id)
         )
     """)
-    
-    # Garante que a tabela de configuração do bot exista
     conn.execute("""
         CREATE TABLE IF NOT EXISTS bot_config (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             prompt_sistema TEXT
         )
     """)
-    
     conn.commit()
     conn.close()
 
-# Executa a checagem ao iniciar a aplicação
 init_db_auto()
 
-# Rota Principal - Busca os dados do banco de dados reais
+
+# ==========================================
+# 🌍 ROTAS PÚBLICAS (VISÃO DO CLIENTE COMPRADOR)
+# ==========================================
+
+# Agora a Raiz do site (/) carrega a busca pública de imóveis!
 @app.get("/")
-async def serve_dashboard(request: Request):
+async def serve_home_cliente(request: Request, q: str = None):
     conn = get_db_connection()
+    if q:
+        query = f"%{q}%"
+        imoveis = conn.execute("""
+            SELECT * FROM imoveis 
+            WHERE titulo LIKE ? OR bairro LIKE ? OR caracteristicas LIKE ? OR descricao LIKE ?
+            ORDER BY data_cadastro DESC
+        """, (query, query, query, query)).fetchall()
+    else:
+        imoveis = conn.execute("SELECT * FROM imoveis ORDER BY data_cadastro DESC").fetchall()
+    conn.close()
     
-    # 1. Busca todos os leads cadastrados
+    return templates.TemplateResponse(
+        request=request,
+        name="cliente_busca.html",
+        context={"imoveis": imoveis, "busca_atual": q or ""}
+    )
+
+# Rota para abrir a página de login
+@app.get("/login")
+async def serve_login_page(request: Request, error: str = None):
+    return templates.TemplateResponse(request=request, name="login.html", context={"error": error})
+
+# Rota que valida os dados do formulário de login
+@app.post("/login")
+async def process_login(username: str = Form(...), password: str = Form(...)):
+    # Validação com as suas credenciais solicitadas
+    if username == "ADMimob" and password == "Adm@2026":
+        response = RedirectResponse(url="/dashboard", status_code=303)
+        # Salva o cookie de segurança que dá acesso ao painel
+        response.set_cookie(key="imobia_session", value="authenticated_admin_2026", path="/", httponly=True)
+        return response
+    else:
+        return RedirectResponse(url="/login?error=Usuario%20ou%20senha%20incorretos", status_code=303)
+
+# Rota para o corretor sair do painel com segurança
+@app.get("/logout")
+async def process_logout():
+    response = RedirectResponse(url="/", status_code=303)
+    response.delete_cookie("imobia_session", path="/")
+    return response
+
+
+# ==========================================
+# 🔒 ROTAS PROTEGIDAS (REQUEREM LOGIN DO ADM)
+# ==========================================
+
+# O painel com as abas de leads, histórico e prompt agora fica em /dashboard
+@app.get("/dashboard")
+async def serve_dashboard(request: Request, authenticated: bool = Depends(verificar_admin_cookie)):
+    conn = get_db_connection()
     leads = conn.execute("SELECT * FROM leads ORDER BY data_criacao DESC").fetchall()
-    
-    # 2. Busca o prompt do sistema atual
     config = conn.execute("SELECT prompt_sistema FROM bot_config ORDER BY id DESC LIMIT 1").fetchone()
     prompt_atual = config['prompt_sistema'] if config else "Você é um corretor de imóveis focado em qualificar leads."
     
-    # 3. Busca o histórico de mensagens (para a aba de chats)
     historico = conn.execute("""
         SELECT h.*, l.nome as lead_nome 
         FROM chat_history h 
         JOIN leads l ON h.lead_id = l.id 
         ORDER BY h.data_envio DESC
     """).fetchall()
-    
     conn.close()
     
     return templates.TemplateResponse(
@@ -107,11 +160,9 @@ async def serve_dashboard(request: Request):
         context={"leads": leads, "prompt_atual": prompt_atual, "historico": historico}
     )
 
-# --- ROTA PARA VISUALIZAR A PÁGINA DE IMÓVEIS ---
 @app.get("/imoveis")
-async def serve_imoveis(request: Request):
+async def serve_imoveis(request: Request, authenticated: bool = Depends(verificar_admin_cookie)):
     conn = get_db_connection()
-    # Busca todos os imóveis cadastrados para renderizar no HTML
     imoveis = conn.execute("SELECT * FROM imoveis ORDER BY data_cadastro DESC").fetchall()
     conn.close()
     
@@ -121,7 +172,6 @@ async def serve_imoveis(request: Request):
         context={"imoveis": imoveis}
     )
 
-# --- ROTA PARA CADASTRAR OU ATUALIZAR UM IMÓVEL ---
 @app.post("/cadastrar-imovel")
 async def cadastrar_imovel(
     id: str = Form(None),
@@ -131,11 +181,10 @@ async def cadastrar_imovel(
     preco: str = Form(...),
     caracteristicas: str = Form(...),
     descricao: str = Form(...),
-    imagem_url: str = Form(None)
+    imagem_url: str = Form(None),
+    authenticated: bool = Depends(verificar_admin_cookie)
 ):
     conn = get_db_connection()
-    
-    # Se vier com o ID preenchido do formulário oculto, atualiza em vez de inserir novo
     if id and id.strip() != "":
         conn.execute("""
             UPDATE imoveis 
@@ -148,32 +197,31 @@ async def cadastrar_imovel(
             INSERT INTO imoveis (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, data_cadastro)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, data_atual))
-    
     conn.commit()
     conn.close()
     
-    from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/imoveis", status_code=303)
 
-# --- ROTA PARA EXCLUIR IMÓVEL POR ID ---
 @app.get("/deletar-imovel/{imovel_id}")
-async def deletar_imovel(imovel_id: int):
+async def deletar_imovel(imovel_id: int, authenticated: bool = Depends(verificar_admin_cookie)):
     conn = get_db_connection()
     conn.execute("DELETE FROM imoveis WHERE id = ?", (imovel_id,))
     conn.commit()
     conn.close()
-    
-    from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/imoveis", status_code=303)
 
-# Rota para salvar um novo prompt enviado pela tela de configurações
 @app.post("/salvar-prompt")
-async def salvar_prompt(prompt: str = Form(...)):
+async def salvar_prompt(prompt: str = Form(...), authenticated: bool = Depends(verificar_admin_cookie)):
     conn = get_db_connection()
     conn.execute("INSERT INTO bot_config (prompt_sistema) VALUES (?)", (prompt,))
     conn.commit()
     conn.close()
     return {"status": "success", "message": "Prompt updated successfully!"}
+
+
+# ==========================================
+# 🤖 WEBHOOK INTEGRAÇÃO (WHATSAPP / BOT)
+# ==========================================
 
 class WhatsAppMessage(BaseModel):
     phone: str
@@ -200,7 +248,6 @@ async def receive_whatsapp_message(payload: WhatsAppMessage):
         else:
             lead_id = lead['id']
             
-        # CORRIGIDO: Modificado de 'mansion' para 'mensagem'
         conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'user', ?)", 
                      (lead_id, user_message))
         
@@ -219,7 +266,6 @@ async def receive_whatsapp_message(payload: WhatsAppMessage):
         
         conn.commit()
         return {"status": "success", "reply": bot_reply}
-        
     except Exception as e:
         return {"status": "error", "message": str(e)}
     finally:

@@ -16,7 +16,7 @@
             .imoveis-layout { grid-template-columns: 1fr; }
         }
         .form-card {
-            background: #2d3748; /* Cor escura padrão do card */
+            background: #2d3748; 
             padding: 20px;
             border-radius: 8px;
             border: 1px solid #4a5568;
@@ -113,7 +113,6 @@
         @media (max-width: 600px) {
             .imovel-list { grid-template-columns: 1fr; }
         }
-        /* Barra de botões de controle do card */
         .card-actions {
             display: flex;
             gap: 10px;
@@ -139,13 +138,20 @@
 </head>
 <body>
     <div class="dashboard-container">
-        <aside class="sidebar">
-            <h2>Imobi<span>AI</span></h2>
-            <nav>
-                <a href="/" id="menu-leads" class="nav-link" onclick="switchTab('leads')">Leads Qualificados</a>
-                <a href="/imoveis" id="menu-imoveis" class="nav-link active">Gerenciar Imóveis</a>
-                <a href="/#config" id="menu-config" class="nav-link" onclick="switchTab('config')">Configurações do Bot</a>
-                <a href="/#historico" id="menu-historico" class="nav-link" onclick="switchTab('historico')">Histórico de Chats</a>
+        <aside class="sidebar" style="display: flex; flex-direction: column; justify-content: space-between; height: 100vh; box-sizing: border-box; padding-bottom: 20px;">
+            <div>
+                <h2>Imobi<span>AI</span></h2>
+                <nav>
+                    <a href="/dashboard" id="menu-leads" class="nav-link">Leads Qualificados</a>
+                    <a href="/imoveis" id="menu-imoveis" class="nav-link active">Gerenciar Imóveis</a>
+                    <a href="/dashboard#config" id="menu-config" class="nav-link">Configurações do Bot</a>
+                    <a href="/dashboard#historico" id="menu-historico" class="nav-link">Histórico de Chats</a>
+                </nav>
+            </div>
+            
+            <nav style="border-top: 1px solid #4a5568; padding-top: 15px;">
+                <a href="/" target="_blank" style="font-size: 0.85rem; color: #a0aec0; text-decoration: none; display: block; margin-bottom: 10px;">🌐 Ver Site Público</a>
+                <a href="/logout" style="color: #e53e3e; font-weight: bold; text-decoration: none; display: block;">🚪 Sair do Painel</a>
             </nav>
         </aside>
 
