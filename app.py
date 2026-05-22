@@ -224,11 +224,13 @@ async def salvar_prompt(prompt: str = Form(...), authenticated: bool = Depends(v
 # ==========================================
 
 class WhatsAppMessage(BaseModel):
+    name: str  # Nome capturado do frontend
     phone: str
     message: str
 
 @app.post("/webhook")
 async def receive_whatsapp_message(payload: WhatsAppMessage):
+    user_name = payload.name
     user_phone = payload.phone
     user_message = payload.message
     
@@ -237,12 +239,13 @@ async def receive_whatsapp_message(payload: WhatsAppMessage):
         config = conn.execute("SELECT prompt_sistema FROM bot_config ORDER BY id DESC LIMIT 1").fetchone()
         system_prompt = config['prompt_sistema'] if config else "Você é um assistente virtual."
         
+        # Busca ou cria o lead com o nome fornecido
         lead = conn.execute("SELECT id FROM leads WHERE telefone = ?", (user_phone,)).fetchone()
         if not lead:
             data_atual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             cursor = conn.execute(
                 "INSERT INTO leads (nome, telefone, status, data_criacao) VALUES (?, ?, 'progress', ?)", 
-                (f"Lead {user_phone[-4:]}", user_phone, data_atual)
+                (user_name, user_phone, data_atual)
             )
             lead_id = cursor.lastrowid
         else:
@@ -251,15 +254,20 @@ async def receive_whatsapp_message(payload: WhatsAppMessage):
         conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'user', ?)", 
                      (lead_id, user_message))
         
+        # Chamada da IA com o contexto do nome do cliente
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=user_message,
             config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
+                system_instruction=f"{system_prompt} O cliente chama-se {user_name}. Já temos o telefone dele. Não peça nome nem telefone. Seja direto.",
                 temperature=0.5,
             ),
         )
         bot_reply = response.text
+        
+        # Lógica de marcação de status
+        if any(word in user_message.lower() for word in ['agendar', 'horário', 'correto', 'confirmado', 'ligar']):
+            conn.execute("UPDATE leads SET status = 'hot' WHERE id = ?", (lead_id,))
         
         conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'assistant', ?)", 
                      (lead_id, bot_reply))

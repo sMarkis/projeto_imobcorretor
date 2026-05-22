@@ -6,11 +6,16 @@
     <title>Encontre seu Imóvel Ideal</title>
     <link rel="stylesheet" href="/static/style.css?v=1.2">
     <style>
+        /* Estilos exclusivos para a experiência limpa do cliente */
         .public-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         .search-box { display: flex; gap: 10px; margin-bottom: 30px; }
         .search-box input { flex: 1; padding: 12px; background: #2d3748; border: 1px solid #4a5568; border-radius: 6px; color: white; font-size: 1rem; }
         .search-box button { padding: 12px 24px; background: #3182ce; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        
+        /* Layout de exibição dos imóveis para o comprador */
         .client-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        
+        /* Janela de Chat embutida na lateral ou flutuante */
         .chat-widget { background: #2d3748; border: 1px solid #4a5568; border-radius: 8px; padding: 15px; margin-top: 40px; }
         .chat-messages { height: 200px; background: #1a202c; border-radius: 6px; padding: 10px; overflow-y: auto; margin-bottom: 10px; font-size: 0.9rem; }
         .chat-input-row { display: flex; gap: 5px; }
@@ -28,7 +33,7 @@
         </header>
 
         <form action="/" method="GET" class="search-box">
-            <input type="text" name="q" value="{{ busca_atual }}" placeholder="Digite um bairro, tipo de imóvel ou característica...">
+            <input type="text" name="q" value="{{ busca_atual }}" placeholder="Digite um bairro, tipo de imóvel ou característica... Ex: Planta, Suíte, Sacada">
             <button type="submit">Buscar Imóveis</button>
         </form>
 
@@ -52,25 +57,29 @@
                     <div class="imovel-carac" style="background:#1a202c; padding:8px; border-radius:4px; font-size:0.8rem; margin-bottom:10px;">
                         📋 {{ imovel.caracteristicas }}
                     </div>
+                    <p style="font-size:0.8rem; color:#cbd5e0; margin:0;">{{ imovel.descricao }}</p>
                 </div>
             </div>
+            {% else %}
+            <p style="color:#a0aec0;">Nenhum imóvel corresponde à sua busca.</p>
             {% endfor %}
         </div>
 
         <div class="chat-widget">
             <h3 style="margin-top: 0; margin-bottom: 5px; color: #48bb78;">Fale com nosso Corretor IA 🤖</h3>
+            <p style="font-size: 0.8rem; color: #a0aec0; margin-bottom: 15px;">Preencha seus dados para começar.</p>
             
             <div style="margin-bottom: 10px;">
                 <input type="text" id="client-name" placeholder="Seu Nome Completo" style="width: 100%; padding: 8px; margin-bottom: 5px; background: #1a202c; border: 1px solid #4a5568; border-radius: 4px; color: white; box-sizing: border-box;">
-                <input type="text" id="client-phone" placeholder="Seu WhatsApp (apenas números)" style="width: 100%; padding: 8px; background: #1a202c; border: 1px solid #4a5568; border-radius: 4px; color: white; box-sizing: border-box;">
+                <input type="text" id="client-phone" placeholder="Seu WhatsApp (Ex: 19999998888)" style="width: 100%; padding: 8px; background: #1a202c; border: 1px solid #4a5568; border-radius: 4px; color: white; box-sizing: border-box;">
             </div>
 
             <div class="chat-messages" id="chat-box">
-                <div class="msg-bot"><strong>Bot:</strong> Olá! Preencha seu nome e WhatsApp acima para começarmos.</div>
+                <div class="msg-bot"><strong>Bot:</strong> Olá! Preencha seus dados acima para conversarmos.</div>
             </div>
 
             <div class="chat-input-row">
-                <input type="text" id="client-msg" placeholder="Pergunte sobre o imóvel...">
+                <input type="text" id="client-msg" placeholder="Pergunte sobre parcelas, bairros, lazer...">
                 <button type="button" onclick="conversarComBot()" style="background:#48bb78; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight:bold;">Enviar</button>
             </div>
         </div>
@@ -80,16 +89,17 @@
         function conversarComBot() {
             const name = document.getElementById('client-name').value.trim();
             const phone = document.getElementById('client-phone').value.trim();
-            const message = document.getElementById('client-msg').value.trim();
+            const msgInput = document.getElementById('client-msg');
+            const message = msgInput.value.trim();
             const chatBox = document.getElementById('chat-box');
 
             if (!name || !phone || !message) {
-                alert("Por favor, preencha seu nome, WhatsApp e a mensagem.");
+                alert("Por favor, insira seu nome, WhatsApp e a mensagem antes de enviar.");
                 return;
             }
 
             chatBox.innerHTML += `<div class="msg-user"><strong>Você:</strong> ${message}</div>`;
-            document.getElementById('client-msg').value = "";
+            msgInput.value = "";
             chatBox.scrollTop = chatBox.scrollHeight;
 
             fetch('/webhook', {
@@ -105,8 +115,15 @@
                     chatBox.innerHTML += `<div class="msg-bot" style="color:#e53e3e;"><strong>Erro:</strong> ${data.message}</div>`;
                 }
                 chatBox.scrollTop = chatBox.scrollHeight;
+            })
+            .catch(() => {
+                chatBox.innerHTML += `<div class="msg-bot" style="color:#e53e3e;"><strong>Erro:</strong> Falha na conexão.</div>`;
             });
         }
     </script>
+
+    <div style="text-align: right; padding: 20px 0; max-width: 1200px; margin: 0 auto; font-size: 0.8rem;">
+        <a href="/login" style="color: #4a5568; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#718096'" onmouseout="this.style.color='#4a5568'">🔒 Acesso Restrito</a>
+    </div>
 </body>
 </html>
