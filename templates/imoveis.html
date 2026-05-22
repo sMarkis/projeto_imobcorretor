@@ -142,10 +142,10 @@
         <aside class="sidebar">
             <h2>Imobi<span>AI</span></h2>
             <nav>
-                <a href="/" id="menu-leads" class="nav-link">Leads Qualificados</a>
+                <a href="/" id="menu-leads" class="nav-link" onclick="switchTab('leads')">Leads Qualificados</a>
                 <a href="/imoveis" id="menu-imoveis" class="nav-link active">Gerenciar Imóveis</a>
-                <a href="/#config" class="nav-link">Configurações do Bot</a>
-                <a href="/#historico" class="nav-link">Histórico de Chats</a>
+                <a href="/#config" id="menu-config" class="nav-link" onclick="switchTab('config')">Configurações do Bot</a>
+                <a href="/#historico" id="menu-historico" class="nav-link" onclick="switchTab('historico')">Histórico de Chats</a>
             </nav>
         </aside>
 
@@ -257,6 +257,6 @@
         </main>
     </div>
 
-    <script src="/static/script.js?v=1.4"></script>
+    <script src="/static/script.js?v=1.5"></script>
 </body>
 </html>
