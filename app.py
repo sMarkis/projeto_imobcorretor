@@ -101,6 +101,7 @@ init_db_auto()
 # 🌍 ROTAS PÚBLICAS (VISÃO DO CLIENTE COMPRADOR)
 # ==========================================
 
+# Agora a Raiz do site (/) carrega a busca pública de imóveis!
 @app.get("/")
 async def serve_home_cliente(request: Request, q: str = None):
     conn = get_db_connection()
@@ -121,19 +122,24 @@ async def serve_home_cliente(request: Request, q: str = None):
         context={"imoveis": imoveis, "busca_atual": q or ""}
     )
 
+# Rota para abrir a página de login
 @app.get("/login")
 async def serve_login_page(request: Request, error: str = None):
     return templates.TemplateResponse(request=request, name="login.html", context={"error": error})
 
+# Rota que valida os dados do formulário de login
 @app.post("/login")
 async def process_login(username: str = Form(...), password: str = Form(...)):
+    # Validação com as suas credenciais solicitadas
     if username == "ADMimob" and password == "Adm@2026":
         response = RedirectResponse(url="/dashboard", status_code=303)
+        # Salva o cookie de segurança que dá acesso ao painel
         response.set_cookie(key="imobia_session", value="authenticated_admin_2026", path="/", httponly=True)
         return response
     else:
         return RedirectResponse(url="/login?error=Usuario%20ou%20senha%20incorretos", status_code=303)
 
+# Rota para o corretor sair do painel com segurança
 @app.get("/logout")
 async def process_logout():
     response = RedirectResponse(url="/", status_code=303)
@@ -145,6 +151,7 @@ async def process_logout():
 # 🔒 ROTAS PROTEGIDAS (REQUEREM LOGIN DO ADM)
 # ==========================================
 
+# O painel com as abas de leads, histórico e prompt agora fica em /dashboard
 @app.get("/dashboard")
 async def serve_dashboard(request: Request, authenticated: bool = Depends(verificar_admin_cookie)):
     conn = get_db_connection()
@@ -260,13 +267,20 @@ async def receive_whatsapp_message(payload: WhatsAppMessage):
         conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'user', ?)", 
                      (lead_id, user_message))
         
-        # Chamada da IA com o contexto do nome do cliente e Regras de Ouro
+        # BUSCA HISTÓRICO PARA DAR MEMÓRIA À IA (Limitado às últimas 6 mensagens)
+        historico_rows = conn.execute("""
+            SELECT papel, mensagem FROM chat_history 
+            WHERE lead_id = ? ORDER BY id DESC LIMIT 6
+        """, (lead_id,)).fetchall()
+        
+        # Constrói o contexto da conversa para a IA
+        contexto_conversa = "\n".join([f"{row['papel'].upper()}: {row['mensagem']}" for row in reversed(historico_rows)])
+        
+        # Chamada da IA com o histórico, contexto do nome e Regras de Ouro
         regras_ouro = (
-            f" [REGRAS DE OURO]: "
-            f"1. O cliente chama-se {user_name}. "
-            f"2. Você já possui o telefone e o nome dele, portanto NUNCA peça essas informações novamente. "
-            f"3. Seja extremamente direto, profissional e focado em vendas. "
-            f"4. Se o cliente demonstrar interesse em agendar ou visitar, identifique como um lead quente."
+            f"\n[HISTÓRICO RECENTE]: {contexto_conversa}\n"
+            f"[REGRAS DE OURO]: 1. O cliente chama-se {user_name}. 2. Analise o histórico acima e NUNCA repita perguntas já respondidas. "
+            "3. Seja extremamente direto, profissional e focado em vendas. 4. Se o cliente solicitar agendamento, marque como lead quente."
         )
         
         response = client.models.generate_content(
