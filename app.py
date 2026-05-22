@@ -78,6 +78,19 @@ def init_db_auto():
             prompt_sistema TEXT
         )
     """)
+    
+    # Inicializa o prompt padrão com as Regras de Ouro se o banco estiver vazio
+    check = conn.execute("SELECT count(*) as total FROM bot_config").fetchone()
+    if check['total'] == 0:
+        default_prompt = (
+            "Você é um corretor de imóveis de alta performance, ágil e profissional. "
+            "Sua missão é qualificar leads e ajudar na escolha de imóveis. "
+            "REGRAS DE ATENDIMENTO: 1. O cliente já forneceu o nome e telefone. NUNCA peça essas informações novamente. "
+            "2. Seja direto, cortês e objetivo. Evite textos longos. 3. Responda apenas sobre imóveis. "
+            "4. Se o cliente demonstrar interesse em agendar visitas, identifique como um lead quente."
+        )
+        conn.execute("INSERT INTO bot_config (prompt_sistema) VALUES (?)", (default_prompt,))
+        
     conn.commit()
     conn.close()
 
@@ -88,7 +101,6 @@ init_db_auto()
 # 🌍 ROTAS PÚBLICAS (VISÃO DO CLIENTE COMPRADOR)
 # ==========================================
 
-# Agora a Raiz do site (/) carrega a busca pública de imóveis!
 @app.get("/")
 async def serve_home_cliente(request: Request, q: str = None):
     conn = get_db_connection()
@@ -109,24 +121,19 @@ async def serve_home_cliente(request: Request, q: str = None):
         context={"imoveis": imoveis, "busca_atual": q or ""}
     )
 
-# Rota para abrir a página de login
 @app.get("/login")
 async def serve_login_page(request: Request, error: str = None):
     return templates.TemplateResponse(request=request, name="login.html", context={"error": error})
 
-# Rota que valida os dados do formulário de login
 @app.post("/login")
 async def process_login(username: str = Form(...), password: str = Form(...)):
-    # Validação com as suas credenciais solicitadas
     if username == "ADMimob" and password == "Adm@2026":
         response = RedirectResponse(url="/dashboard", status_code=303)
-        # Salva o cookie de segurança que dá acesso ao painel
         response.set_cookie(key="imobia_session", value="authenticated_admin_2026", path="/", httponly=True)
         return response
     else:
         return RedirectResponse(url="/login?error=Usuario%20ou%20senha%20incorretos", status_code=303)
 
-# Rota para o corretor sair do painel com segurança
 @app.get("/logout")
 async def process_logout():
     response = RedirectResponse(url="/", status_code=303)
@@ -138,7 +145,6 @@ async def process_logout():
 # 🔒 ROTAS PROTEGIDAS (REQUEREM LOGIN DO ADM)
 # ==========================================
 
-# O painel com as abas de leads, histórico e prompt agora fica em /dashboard
 @app.get("/dashboard")
 async def serve_dashboard(request: Request, authenticated: bool = Depends(verificar_admin_cookie)):
     conn = get_db_connection()
@@ -254,9 +260,9 @@ async def receive_whatsapp_message(payload: WhatsAppMessage):
         conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'user', ?)", 
                      (lead_id, user_message))
         
-        # Chamada da IA com as Regras de Ouro
+        # Chamada da IA com o contexto do nome do cliente e Regras de Ouro
         regras_ouro = (
-            f"REGRAS DE OURO: "
+            f" [REGRAS DE OURO]: "
             f"1. O cliente chama-se {user_name}. "
             f"2. Você já possui o telefone e o nome dele, portanto NUNCA peça essas informações novamente. "
             f"3. Seja extremamente direto, profissional e focado em vendas. "
