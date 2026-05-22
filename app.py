@@ -19,11 +19,14 @@ client = genai.Client()
 
 # --- FUNÇÃO AUXILIAR DE SEGURANÇA POR COOKIE ---
 def verificar_admin_cookie(request: Request):
+    # Busca o cookie de login chamado "imobia_session"
     session = request.cookies.get("imobia_session")
     if session != "authenticated_admin_2026":
+        # Se não estiver logado, lança o erro que redireciona para o login
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     return True
 
+# Tratamento para quando o usuário tenta acessar o painel sem estar logado
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 401:
@@ -80,67 +83,123 @@ def init_db_auto():
 
 init_db_auto()
 
+
 # ==========================================
-# 🌍 ROTAS PÚBLICAS
+# 🌍 ROTAS PÚBLICAS (VISÃO DO CLIENTE COMPRADOR)
 # ==========================================
+
+# Agora a Raiz do site (/) carrega a busca pública de imóveis!
 @app.get("/")
 async def serve_home_cliente(request: Request, q: str = None):
     conn = get_db_connection()
     if q:
         query = f"%{q}%"
-        imoveis = conn.execute("SELECT * FROM imoveis WHERE titulo LIKE ? OR bairro LIKE ? ORDER BY data_cadastro DESC", (query, query)).fetchall()
+        imoveis = conn.execute("""
+            SELECT * FROM imoveis 
+            WHERE titulo LIKE ? OR bairro LIKE ? OR caracteristicas LIKE ? OR descricao LIKE ?
+            ORDER BY data_cadastro DESC
+        """, (query, query, query, query)).fetchall()
     else:
         imoveis = conn.execute("SELECT * FROM imoveis ORDER BY data_cadastro DESC").fetchall()
     conn.close()
-    return templates.TemplateResponse(request=request, name="cliente_busca.html", context={"imoveis": imoveis, "busca_atual": q or ""})
+    
+    return templates.TemplateResponse(
+        request=request,
+        name="cliente_busca.html",
+        context={"imoveis": imoveis, "busca_atual": q or ""}
+    )
 
+# Rota para abrir a página de login
 @app.get("/login")
 async def serve_login_page(request: Request, error: str = None):
     return templates.TemplateResponse(request=request, name="login.html", context={"error": error})
 
+# Rota que valida os dados do formulário de login
 @app.post("/login")
 async def process_login(username: str = Form(...), password: str = Form(...)):
+    # Validação com as suas credenciais solicitadas
     if username == "ADMimob" and password == "Adm@2026":
         response = RedirectResponse(url="/dashboard", status_code=303)
+        # Salva o cookie de segurança que dá acesso ao painel
         response.set_cookie(key="imobia_session", value="authenticated_admin_2026", path="/", httponly=True)
         return response
-    return RedirectResponse(url="/login?error=Usuario%20ou%20senha%20incorretos", status_code=303)
+    else:
+        return RedirectResponse(url="/login?error=Usuario%20ou%20senha%20incorretos", status_code=303)
 
+# Rota para o corretor sair do painel com segurança
 @app.get("/logout")
 async def process_logout():
     response = RedirectResponse(url="/", status_code=303)
     response.delete_cookie("imobia_session", path="/")
     return response
 
+
 # ==========================================
-# 🔒 ROTAS PROTEGIDAS
+# 🔒 ROTAS PROTEGIDAS (REQUEREM LOGIN DO ADM)
 # ==========================================
+
+# O painel com as abas de leads, histórico e prompt agora fica em /dashboard
 @app.get("/dashboard")
 async def serve_dashboard(request: Request, authenticated: bool = Depends(verificar_admin_cookie)):
     conn = get_db_connection()
     leads = conn.execute("SELECT * FROM leads ORDER BY data_criacao DESC").fetchall()
     config = conn.execute("SELECT prompt_sistema FROM bot_config ORDER BY id DESC LIMIT 1").fetchone()
     prompt_atual = config['prompt_sistema'] if config else "Você é um corretor de imóveis focado em qualificar leads."
-    historico = conn.execute("SELECT h.*, l.nome as lead_nome FROM chat_history h JOIN leads l ON h.lead_id = l.id ORDER BY h.data_envio DESC").fetchall()
+    
+    historico = conn.execute("""
+        SELECT h.*, l.nome as lead_nome 
+        FROM chat_history h 
+        JOIN leads l ON h.lead_id = l.id 
+        ORDER BY h.data_envio DESC
+    """).fetchall()
     conn.close()
-    return templates.TemplateResponse(request=request, name="index.html", context={"leads": leads, "prompt_atual": prompt_atual, "historico": historico})
+    
+    return templates.TemplateResponse(
+        request=request, 
+        name="index.html", 
+        context={"leads": leads, "prompt_atual": prompt_atual, "historico": historico}
+    )
 
 @app.get("/imoveis")
 async def serve_imoveis(request: Request, authenticated: bool = Depends(verificar_admin_cookie)):
     conn = get_db_connection()
     imoveis = conn.execute("SELECT * FROM imoveis ORDER BY data_cadastro DESC").fetchall()
     conn.close()
-    return templates.TemplateResponse(request=request, name="imoveis.html", context={"imoveis": imoveis})
+    
+    return templates.TemplateResponse(
+        request=request,
+        name="imoveis.html",
+        context={"imoveis": imoveis}
+    )
 
 @app.post("/cadastrar-imovel")
-async def cadastrar_imovel(id: str = Form(None), titulo: str = Form(...), tipo: str = Form(...), bairro: str = Form(...), preco: str = Form(...), caracteristicas: str = Form(...), descricao: str = Form(...), imagem_url: str = Form(None), authenticated: bool = Depends(verificar_admin_cookie)):
+async def cadastrar_imovel(
+    id: str = Form(None),
+    titulo: str = Form(...),
+    tipo: str = Form(...),
+    bairro: str = Form(...),
+    preco: str = Form(...),
+    caracteristicas: str = Form(...),
+    descricao: str = Form(...),
+    imagem_url: str = Form(None),
+    authenticated: bool = Depends(verificar_admin_cookie)
+):
     conn = get_db_connection()
     if id and id.strip() != "":
-        conn.execute("UPDATE imoveis SET titulo=?, tipo=?, bairro=?, preco=?, caracteristicas=?, descricao=?, imagem_url=? WHERE id=?", (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, int(id)))
+        conn.execute("""
+            UPDATE imoveis 
+            SET titulo=?, tipo=?, bairro=?, preco=?, caracteristicas=?, descricao=?, imagem_url=?
+            WHERE id=?
+        """, (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, int(id)))
     else:
-        conn.execute("INSERT INTO imoveis (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, data_cadastro) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        data_atual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        conn.execute("""
+            INSERT INTO imoveis (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, data_cadastro)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, data_atual))
     conn.commit()
     conn.close()
+    
     return RedirectResponse(url="/imoveis", status_code=303)
 
 @app.get("/deletar-imovel/{imovel_id}")
@@ -159,49 +218,51 @@ async def salvar_prompt(prompt: str = Form(...), authenticated: bool = Depends(v
     conn.close()
     return {"status": "success", "message": "Prompt updated successfully!"}
 
+
 # ==========================================
-# 🤖 WEBHOOK APRIMORADO (NOME + TELEFONE + LOGICA)
+# 🤖 WEBHOOK INTEGRAÇÃO (WHATSAPP / BOT)
 # ==========================================
-class WebhookPayload(BaseModel):
-    name: str
+
+class WhatsAppMessage(BaseModel):
     phone: str
     message: str
 
 @app.post("/webhook")
-async def receive_whatsapp_message(payload: WebhookPayload):
-    user_name = payload.name
+async def receive_whatsapp_message(payload: WhatsAppMessage):
     user_phone = payload.phone
     user_message = payload.message
     
     conn = get_db_connection()
     try:
         config = conn.execute("SELECT prompt_sistema FROM bot_config ORDER BY id DESC LIMIT 1").fetchone()
-        system_prompt = config['prompt_sistema'] if config else "Você é um corretor ágil. Seja direto."
+        system_prompt = config['prompt_sistema'] if config else "Você é um assistente virtual."
         
-        lead = conn.execute("SELECT id, nome FROM leads WHERE telefone = ?", (user_phone,)).fetchone()
+        lead = conn.execute("SELECT id FROM leads WHERE telefone = ?", (user_phone,)).fetchone()
         if not lead:
-            cursor = conn.execute("INSERT INTO leads (nome, telefone, status) VALUES (?, ?, 'progress')", (user_name, user_phone))
+            data_atual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cursor = conn.execute(
+                "INSERT INTO leads (nome, telefone, status, data_criacao) VALUES (?, ?, 'progress', ?)", 
+                (f"Lead {user_phone[-4:]}", user_phone, data_atual)
+            )
             lead_id = cursor.lastrowid
-            bot_reply = f"Olá {user_name}! Entendido. Qual o tipo de imóvel, bairro e características que você busca?"
         else:
             lead_id = lead['id']
-            conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'user', ?)", (lead_id, user_message))
             
-            response = client.models.generate_content(
-                model='gemini-2.0-flash',
-                contents=user_message,
-                config=types.GenerateContentConfig(
-                    system_instruction=f"{system_prompt} O cliente se chama {lead['nome']}. Telefone: {user_phone}. Não repita perguntas. Não peça telefone. Seja direto.",
-                    temperature=0.5,
-                ),
-            )
-            bot_reply = response.text
-            
-            # Marca como HOT se o cliente pedir para agendar ou confirmar
-            if any(word in user_message.lower() for word in ['agendar', 'horário', 'correto', 'confirmado', 'ligar']):
-                conn.execute("UPDATE leads SET status = 'hot' WHERE id = ?", (lead_id,))
-            
-            conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'assistant', ?)", (lead_id, bot_reply))
+        conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'user', ?)", 
+                     (lead_id, user_message))
+        
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.5,
+            ),
+        )
+        bot_reply = response.text
+        
+        conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'assistant', ?)", 
+                     (lead_id, bot_reply))
         
         conn.commit()
         return {"status": "success", "reply": bot_reply}

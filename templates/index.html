@@ -48,7 +48,7 @@
                             <p><strong>Data de Entrada:</strong> {{ lead.data_criacao }}</p>
                         </div>
                         {% if lead.status == 'hot' %}
-                            <a href="https://wa.me/55{{ lead.telefone }}" target="_blank" class="btn-action" style="text-decoration: none; display: block; text-align: center;">Assumir no WhatsApp</a>
+                            <button class="btn-action">Assumir no WhatsApp</button>
                         {% else %}
                             <button class="btn-action secondary" disabled>Bot Conversando...</button>
                         {% endif %}
