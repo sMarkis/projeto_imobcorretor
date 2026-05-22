@@ -19,7 +19,7 @@
             background: #2d3748; /* Cor escura padrão do card */
             padding: 20px;
             border-radius: 8px;
-            border: 1px border border-color #4a5568;
+            border: 1px solid #4a5568;
             height: fit-content;
         }
         .form-group {
@@ -68,7 +68,6 @@
         .imovel-thumb img {
             width: 100%;
             height: 100%;
-            object-cover: cover;
             object-fit: cover;
         }
         .imovel-badge {
@@ -152,7 +151,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Preço</label>
-                                <input type="text" name="preco" required placeholder="Ex: R$ 380.000">
+                                <input type="text" id="preco" name="preco" required placeholder="Ex: 380000" autocomplete="off">
                             </div>
                         </div>
 
@@ -224,5 +223,7 @@
             </div>
         </main>
     </div>
+
+    <script src="/static/script.js?v=1.3"></script>
 </body>
 </html>
