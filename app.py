@@ -2,7 +2,8 @@ from fastapi import FastAPI, Request, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from openai import OpenAI
+from google import genai
+from google.genai import types
 import sqlite3
 import os
 
@@ -12,13 +13,14 @@ app = FastAPI(title="ImobiAI - Engine de Qualificação")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# Chave da OpenAI
-API_KEY = os.getenv("OPENAI_API_KEY", "sua_chave_aqui")
+# Configuração do Cliente Gemini (Busca a chave no cofre do Render)
+# Nota: A nova biblioteca do Google busca automaticamente a variável GEMINI_API_KEY do sistema
+client = genai.Client()
 
 # Função auxiliar para conectar ao banco
 def get_db_connection():
     conn = sqlite3.connect('crm_bot.db')
-    conn.row_factory = sqlite3.Row  # Permite acessar colunas pelo nome (ex: row['nome'])
+    conn.row_factory = sqlite3.Row  # Permite acessar colunas pelo nome
     return conn
 
 # Rota Principal - Busca os dados do banco de dados reais
@@ -57,7 +59,7 @@ async def salvar_prompt(prompt: str = Form(...)):
     conn.execute("INSERT INTO bot_config (prompt_sistema) VALUES (?)", (prompt,))
     conn.commit()
     conn.close()
-    return {"status": "success", "message": "Prompt atualizado com sucesso!"}
+    return {"status": "success", "message": "Prompt updated successfully!"}
 
 class WhatsAppMessage(BaseModel):
     phone: str
@@ -87,17 +89,16 @@ async def receive_whatsapp_message(payload: WhatsAppMessage):
         conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'user', ?)", 
                      (lead_id, user_message))
         
-        # Envia para a OpenAI
-        client = OpenAI(api_key=API_KEY)
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
-            ],
-            temperature=0.5
+        # Envia para o Google Gemini usando a nova biblioteca google-genai
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.5,
+            ),
         )
-        bot_reply = response.choices[0].message.content
+        bot_reply = response.text
         
         # Salva a resposta do bot no histórico do banco
         conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'assistant', ?)", 
