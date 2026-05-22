@@ -224,7 +224,7 @@ async def salvar_prompt(prompt: str = Form(...), authenticated: bool = Depends(v
 # ==========================================
 
 class WhatsAppMessage(BaseModel):
-    name: str  # Nome capturado do frontend
+    name: str  
     phone: str
     message: str
 
@@ -254,12 +254,20 @@ async def receive_whatsapp_message(payload: WhatsAppMessage):
         conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'user', ?)", 
                      (lead_id, user_message))
         
-        # Chamada da IA com o contexto do nome do cliente
+        # Chamada da IA com as Regras de Ouro
+        regras_ouro = (
+            f"REGRAS DE OURO: "
+            f"1. O cliente chama-se {user_name}. "
+            f"2. Você já possui o telefone e o nome dele, portanto NUNCA peça essas informações novamente. "
+            f"3. Seja extremamente direto, profissional e focado em vendas. "
+            f"4. Se o cliente demonstrar interesse em agendar ou visitar, identifique como um lead quente."
+        )
+        
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=user_message,
             config=types.GenerateContentConfig(
-                system_instruction=f"{system_prompt} O cliente chama-se {user_name}. Já temos o telefone dele. Não peça nome nem telefone. Seja direto.",
+                system_instruction=f"{system_prompt} {regras_ouro}",
                 temperature=0.5,
             ),
         )
