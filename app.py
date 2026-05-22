@@ -26,7 +26,8 @@ def get_db_connection():
 # --- FUNÇÃO DE INICIALIZAÇÃO AUTOMÁTICA DO BANCO ---
 def init_db_auto():
     conn = get_db_connection()
-    # Garante que a tabela de imóveis exista no Render
+    
+    # Garante que a tabela de imóveis exista
     conn.execute("""
         CREATE TABLE IF NOT EXISTS imoveis (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,6 +41,38 @@ def init_db_auto():
             data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    
+    # Garante que a tabela de leads exista
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS leads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT,
+            telefone TEXT UNIQUE,
+            status TEXT,
+            data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Garante que a tabela de histórico de chats exista com os nomes de colunas corretos
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS chat_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lead_id INTEGER,
+            papel TEXT,
+            mensagem TEXT,
+            data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (lead_id) REFERENCES leads (id)
+        )
+    """)
+    
+    # Garante que a tabela de configuração do bot exista
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS bot_config (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            prompt_sistema TEXT
+        )
+    """)
+    
     conn.commit()
     conn.close()
 
@@ -56,7 +89,7 @@ async def serve_dashboard(request: Request):
     
     # 2. Busca o prompt do sistema atual
     config = conn.execute("SELECT prompt_sistema FROM bot_config ORDER BY id DESC LIMIT 1").fetchone()
-    prompt_atual = config['prompt_sistema'] if config else "Sem prompt configurado."
+    prompt_atual = config['prompt_sistema'] if config else "Você é um corretor de imóveis focado em qualificar leads."
     
     # 3. Busca o histórico de mensagens (para a aba de chats)
     historico = conn.execute("""
@@ -122,7 +155,7 @@ async def cadastrar_imovel(
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/imoveis", status_code=303)
 
-# --- NOVA ROTA: EXCLUIR IMÓVEL COBRADO POR ID ---
+# --- ROTA PARA EXCLUIR IMÓVEL POR ID ---
 @app.get("/deletar-imovel/{imovel_id}")
 async def deletar_imovel(imovel_id: int):
     conn = get_db_connection()
@@ -167,7 +200,8 @@ async def receive_whatsapp_message(payload: WhatsAppMessage):
         else:
             lead_id = lead['id']
             
-        conn.execute("INSERT INTO chat_history (lead_id, papel, mansion) VALUES (?, 'user', ?)", 
+        # CORRIGIDO: Modificado de 'mansion' para 'mensagem'
+        conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'user', ?)", 
                      (lead_id, user_message))
         
         response = client.models.generate_content(
