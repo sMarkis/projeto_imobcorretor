@@ -4,31 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ImobiAI - Dashboard do Corretor</title>
-    <link rel="stylesheet" href="/static/style.css?v=1.2">
+    <link class="html-embed" rel="stylesheet" href="/static/style.css?v=1.2">
 </head>
 <body>
     <div class="dashboard-container">
-        <!-- Sidebar Lateral -->
         <aside class="sidebar">
             <h2>Imobi<span>AI</span></h2>
             <nav>
                 <a href="#" id="menu-leads" class="nav-link active" onclick="switchTab('leads')">Leads Qualificados</a>
+                <a href="/imoveis" id="menu-imoveis" class="nav-link">Gerenciar Imóveis</a>
                 <a href="#" id="menu-config" class="nav-link" onclick="switchTab('config')">Configurações do Bot</a>
                 <a href="#" id="menu-historico" class="nav-link" onclick="switchTab('historico')">Histórico de Chats</a>
             </nav>
         </aside>
 
-        <!-- Conteúdo Principal -->
         <main class="main-content">
             
-            <!-- SEÇÃO 1: LEADS QUALIFICADOS -->
             <section id="section-leads" class="tab-content active-content">
                 <header>
                     <h1>Painel de Leads Recentes</h1>
                     <p>Clientes triados pela Inteligência Artificial e salvos no Banco de Dados.</p>
                 </header>
                 <div class="leads-grid">
-                    <!-- Loop do Python para renderizar cada lead do banco -->
                     {% for lead in leads %}
                     <div class="lead-card status-{{ lead.status }}">
                         <div class="card-header">
@@ -55,7 +52,6 @@
                 </div>
             </section>
 
-            <!-- SEÇÃO 2: CONFIGURAÇÕES DO BOT -->
             <section id="section-config" class="tab-content">
                 <header>
                     <h1>Configurações do Bot</h1>
@@ -64,10 +60,7 @@
                 <div class="config-container">
                     <div class="config-card">
                         <h3>Prompt de Direcionamento Comercial</h3>
-                        <p> </p>
                         
-                        <p> </p>
-
                         <div id="alert-msg" style="display: none; padding: 10px; margin-bottom: 15px; border-radius: 4px; font-weight: bold;"></div>
 
                         <textarea id="prompt-text" name="prompt" rows="6">{{ prompt_atual }}</textarea>
@@ -76,7 +69,6 @@
                 </div>
             </section>
 
-            <!-- SEÇÃO 3: HISTÓRICO DE CHATS -->
             <section id="section-historico" class="tab-content">
                 <header>
                     <h1>Histórico de Chats</h1>
