@@ -15,7 +15,6 @@ function switchTab(tabName) {
     }
 }
 
-// Função para salvar o prompt sem atualizar a página
 // Função para salvar o prompt com confirmação e alerta temporário
 function enviarPrompt() {
     const promptValue = document.getElementById('prompt-text').value;
@@ -67,3 +66,36 @@ function enviarPrompt() {
         }, 3000);
     });
 }
+
+// --- NOVA INCLUSÃO: MÁSCARA DE MOEDA AUTOMÁTICA PARA O PREÇO ---
+document.addEventListener("DOMContentLoaded", function () {
+    const inputPreco = document.getElementById('preco');
+
+    // Só aplica a lógica se o campo de preço existir na página atual (evita erros no index)
+    if (inputPreco) {
+        inputPreco.addEventListener('input', function (e) {
+            // Remove tudo o que não for número decimal
+            let valor = e.target.value.replace(/\D/g, '');
+            
+            if (!valor) {
+                e.target.value = '';
+                return;
+            }
+
+            // Divide por 100 para aplicar os centavos e converte para o formato local R$
+            valor = (parseFloat(valor) / 100).toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            });
+
+            e.target.value = valor;
+        });
+
+        // Define um valor inicial amigável quando o usuário clica no campo vazio
+        inputPreco.addEventListener('focus', function (e) {
+            if (e.target.value === '') {
+                e.target.value = 'R$ 0,00';
+            }
+        });
+    }
+});
