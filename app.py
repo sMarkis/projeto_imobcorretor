@@ -88,9 +88,10 @@ async def serve_imoveis(request: Request):
         context={"imoveis": imoveis}
     )
 
-# --- ROTA PARA CADASTRAR UM NOVO IMÓVEL ---
+# --- ROTA PARA CADASTRAR OU ATUALIZAR UM IMÓVEL ---
 @app.post("/cadastrar-imovel")
 async def cadastrar_imovel(
+    id: str = Form(None),
     titulo: str = Form(...),
     tipo: str = Form(...),
     bairro: str = Form(...),
@@ -100,17 +101,35 @@ async def cadastrar_imovel(
     imagem_url: str = Form(None)
 ):
     conn = get_db_connection()
-    data_atual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    conn.execute("""
-        INSERT INTO imoveis (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, data_cadastro)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, data_atual))
+    # Se vier com o ID preenchido do formulário oculto, atualiza em vez de inserir novo
+    if id and id.strip() != "":
+        conn.execute("""
+            UPDATE imoveis 
+            SET titulo=?, tipo=?, bairro=?, preco=?, caracteristicas=?, descricao=?, imagem_url=?
+            WHERE id=?
+        """, (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, int(id)))
+    else:
+        data_atual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        conn.execute("""
+            INSERT INTO imoveis (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, data_cadastro)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, data_atual))
     
     conn.commit()
     conn.close()
     
-    # Após cadastrar, redireciona o usuário de volta para a página de imóveis atualizada
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/imoveis", status_code=303)
+
+# --- NOVA ROTA: EXCLUIR IMÓVEL COBRADO POR ID ---
+@app.get("/deletar-imovel/{imovel_id}")
+async def deletar_imovel(imovel_id: int):
+    conn = get_db_connection()
+    conn.execute("DELETE FROM imoveis WHERE id = ?", (imovel_id,))
+    conn.commit()
+    conn.close()
+    
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/imoveis", status_code=303)
 

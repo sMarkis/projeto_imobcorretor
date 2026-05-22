@@ -67,14 +67,12 @@ function enviarPrompt() {
     });
 }
 
-// --- NOVA INCLUSÃO: MÁSCARA DE MOEDA AUTOMÁTICA PARA O PREÇO ---
+// --- MÁSCARA DE MOEDA AUTOMÁTICA E RECURSOS DE CARTEIRA ---
 document.addEventListener("DOMContentLoaded", function () {
     const inputPreco = document.getElementById('preco');
 
-    // Só aplica a lógica se o campo de preço existir na página atual (evita erros no index)
     if (inputPreco) {
         inputPreco.addEventListener('input', function (e) {
-            // Remove tudo o que não for número decimal
             let valor = e.target.value.replace(/\D/g, '');
             
             if (!valor) {
@@ -82,7 +80,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            // Divide por 100 para aplicar os centavos e converte para o formato local R$
             valor = (parseFloat(valor) / 100).toLocaleString('pt-BR', {
                 style: 'currency',
                 currency: 'BRL'
@@ -91,7 +88,6 @@ document.addEventListener("DOMContentLoaded", function () {
             e.target.value = valor;
         });
 
-        // Define um valor inicial amigável quando o usuário clica no campo vazio
         inputPreco.addEventListener('focus', function (e) {
             if (e.target.value === '') {
                 e.target.value = 'R$ 0,00';
@@ -99,3 +95,58 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 });
+
+// Resgata os dados do card e popula o formulário esquerdo
+function prepararEdicao(botao, id) {
+    const card = botao.closest('.imovel-card');
+    
+    const titulo = card.querySelector('h4').innerText;
+    const preco = card.querySelector('.imovel-price').innerText;
+    const bairro = card.querySelector('p').innerText.replace('📍 ', '');
+    const id_carac = card.querySelector('.imovel-carac');
+    const caracteristicas = id_carac ? id_carac.innerText.replace('📋 ', '') : '';
+    const descricao = card.querySelector('p:nth-of-type(2)').innerText;
+    const tipo = card.querySelector('.raw-tipo').innerText;
+    const imgElement = card.querySelector('.imovel-thumb img');
+    const imagem_url = imgElement ? imgElement.getAttribute('src') : '';
+
+    document.getElementById('imovel-id').value = id;
+    document.getElementById('titulo').value = titulo;
+    document.getElementById('tipo').value = tipo;
+    document.getElementById('preco').value = preco;
+    document.getElementById('bairro').value = bairro;
+    document.getElementById('caracteristicas').value = caracteristicas;
+    document.getElementById('imagem_url').value = imagem_url;
+    document.getElementById('descricao').value = descricao;
+
+    document.getElementById('form-title').innerText = "Editar Imóvel #" + id;
+    document.getElementById('form-title').style.color = "#3182ce";
+    document.getElementById('btn-submit').innerText = "Atualizar Imóvel";
+    document.getElementById('btn-cancel-edit').style.display = "block";
+    
+    document.querySelector('.form-card').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Limpa o formulário e aborta o modo de edição
+function cancelarEdicao() {
+    document.getElementById('imovel-id').value = "";
+    document.getElementById('titulo').value = "";
+    document.getElementById('preco').value = "";
+    document.getElementById('bairro').value = "";
+    document.getElementById('caracteristicas').value = "";
+    document.getElementById('imagem_url').value = "";
+    document.getElementById('descricao').value = "";
+    
+    document.getElementById('form-title').innerText = "Novo Imóvel";
+    document.getElementById('form-title').style.color = "#4299e1";
+    document.getElementById('btn-submit').innerText = "Salvar Imóvel";
+    document.getElementById('btn-cancel-edit').style.display = "none";
+}
+
+// Caixa de confirmação antes de remover do SQLite
+function confirmarExclusao(id, titulo) {
+    const certeza = confirm(`Tem certeza que deseja remover o imóvel "${titulo}" da sua base ativa?`);
+    if (certeza) {
+        window.location.href = `/deletar-imovel/${id}`;
+    }
+}
