@@ -6,7 +6,7 @@ from google import genai
 from google.genai import types
 import sqlite3
 import os
-import datetime  # Incluído para gerenciar a data de criação dos leads
+import datetime
 
 app = FastAPI(title="ImobiAI - Engine de Qualificação")
 
@@ -15,7 +15,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # Configuração do Cliente Gemini (Busca a chave no cofre do Render)
-# Nota: A nova biblioteca do Google busca automaticamente a variável GEMINI_API_KEY do sistema
 client = genai.Client()
 
 # Função auxiliar para conectar ao banco
@@ -23,6 +22,29 @@ def get_db_connection():
     conn = sqlite3.connect('crm_bot.db')
     conn.row_factory = sqlite3.Row  # Permite acessar colunas pelo nome
     return conn
+
+# --- FUNÇÃO DE INICIALIZAÇÃO AUTOMÁTICA DO BANCO ---
+def init_db_auto():
+    conn = get_db_connection()
+    # Garante que a tabela de imóveis exista no Render
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS imoveis (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulo TEXT NOT NULL,
+            tipo TEXT NOT NULL,
+            bairro TEXT,
+            preco TEXT,
+            caracteristicas TEXT,
+            descricao TEXT,
+            imagem_url TEXT,
+            data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+# Executa a checagem ao iniciar a aplicação
+init_db_auto()
 
 # Rota Principal - Busca os dados do banco de dados reais
 @app.get("/")
@@ -46,12 +68,51 @@ async def serve_dashboard(request: Request):
     
     conn.close()
     
-    # Envia os dados reais para o arquivo HTML renderizar
     return templates.TemplateResponse(
         request=request, 
         name="index.html", 
         context={"leads": leads, "prompt_atual": prompt_atual, "historico": historico}
     )
+
+# --- ROTA PARA VISUALIZAR A PÁGINA DE IMÓVEIS ---
+@app.get("/imoveis")
+async def serve_imoveis(request: Request):
+    conn = get_db_connection()
+    # Busca todos os imóveis cadastrados para renderizar no HTML
+    imoveis = conn.execute("SELECT * FROM imoveis ORDER BY data_cadastro DESC").fetchall()
+    conn.close()
+    
+    return templates.TemplateResponse(
+        request=request,
+        name="imoveis.html",
+        context={"imoveis": imoveis}
+    )
+
+# --- ROTA PARA CADASTRAR UM NOVO IMÓVEL ---
+@app.post("/cadastrar-imovel")
+async def cadastrar_imovel(
+    titulo: str = Form(...),
+    tipo: str = Form(...),
+    bairro: str = Form(...),
+    preco: str = Form(...),
+    caracteristicas: str = Form(...),
+    descricao: str = Form(...),
+    imagem_url: str = Form(None)
+):
+    conn = get_db_connection()
+    data_atual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    conn.execute("""
+        INSERT INTO imoveis (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, data_cadastro)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, data_atual))
+    
+    conn.commit()
+    conn.close()
+    
+    # Após cadastrar, redireciona o usuário de volta para a página de imóveis atualizada
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/imoveis", status_code=303)
 
 # Rota para salvar um novo prompt enviado pela tela de configurações
 @app.post("/salvar-prompt")
@@ -73,17 +134,12 @@ async def receive_whatsapp_message(payload: WhatsAppMessage):
     
     conn = get_db_connection()
     try:
-        # Busca o prompt do sistema que está salvo no banco
         config = conn.execute("SELECT prompt_sistema FROM bot_config ORDER BY id DESC LIMIT 1").fetchone()
         system_prompt = config['prompt_sistema'] if config else "Você é um assistente virtual."
         
-        # Cria ou localiza o lead pelo telefone
         lead = conn.execute("SELECT id FROM leads WHERE telefone = ?", (user_phone,)).fetchone()
         if not lead:
-            # Captura a data e hora exata do momento do cadastro no formato padrão do SQLite
             data_atual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            # Incluída a coluna data_criacao e o valor da data_atual no INSERT
             cursor = conn.execute(
                 "INSERT INTO leads (nome, telefone, status, data_criacao) VALUES (?, ?, 'progress', ?)", 
                 (f"Lead {user_phone[-4:]}", user_phone, data_atual)
@@ -92,11 +148,9 @@ async def receive_whatsapp_message(payload: WhatsAppMessage):
         else:
             lead_id = lead['id']
             
-        # Salva a mensagem que o usuário enviou no histórico do banco
-        conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'user', ?)", 
+        conn.execute("INSERT INTO chat_history (lead_id, papel, mansion) VALUES (?, 'user', ?)", 
                      (lead_id, user_message))
         
-        # Envia para o Google Gemini usando a nova biblioteca google-genai
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=user_message,
@@ -107,7 +161,6 @@ async def receive_whatsapp_message(payload: WhatsAppMessage):
         )
         bot_reply = response.text
         
-        # Salva a resposta do bot no histórico do banco
         conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'assistant', ?)", 
                      (lead_id, bot_reply))
         
