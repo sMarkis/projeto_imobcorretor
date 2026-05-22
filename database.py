@@ -36,6 +36,21 @@ def init_db():
         )
     ''')
 
+    # 4. NOVA TABELA: Tabela de Imóveis (Usados e Lançamentos na Planta)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS imoveis (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulo TEXT NOT NULL,
+            tipo TEXT NOT NULL, -- 'Planta' ou 'Usado'
+            bairro TEXT,
+            preco TEXT,
+            caracteristicas TEXT, -- Ex: "3 qtos, 2 vagas, 85m²"
+            descricao TEXT,
+            imagem_url TEXT,
+            data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     # Inserir um prompt padrão inicial para o Bot se a tabela estiver vazia
     cursor.execute("SELECT COUNT(*) FROM bot_config")
     if cursor.fetchone()[0] == 0:
@@ -51,6 +66,34 @@ def init_db():
             ('Fernanda Lima', '19977777777', 'progress')
         ]
         cursor.executemany("INSERT INTO leads (nome, telefone, status) VALUES (?, ?, ?)", leads_teste)
+
+    # Inserir alguns Imóveis de teste (Na Planta e Usados) para iniciar o catálogo
+    cursor.execute("SELECT COUNT(*) FROM imoveis")
+    if cursor.fetchone()[0] == 0:
+        imoveis_teste = [
+            (
+                'Residencial Green View', 
+                'Planta', 
+                'Jardim Europa', 
+                'R$ 380.000', 
+                '2 qtos (1 suíte), Varanda Gourmet, 1 vaga', 
+                'Lançamento na planta com excelente localização em Nova Odessa. Área de lazer completa com piscina e quiosque gourmet.',
+                'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=500'
+            ),
+            (
+                'Casa Térrea Clássica', 
+                'Usado', 
+                'Centro', 
+                'R$ 550.000', 
+                '3 qtos (1 suíte), 2 vagas, Quintal amplo', 
+                'Linda casa térrea no centro de Nova Odessa, reformada, com armários planejados na cozinha e excelente espaço de terreno.',
+                'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=500'
+            )
+        ]
+        cursor.executemany(
+            "INSERT INTO imoveis (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+            imoveis_teste
+        )
 
     conn.commit()
     conn.close()

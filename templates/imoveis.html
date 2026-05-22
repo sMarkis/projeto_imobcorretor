@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ImobiAI - Gerenciar Imóveis</title>
+    <link rel="stylesheet" href="/static/style.css?v=1.2">
+    <style>
+        .imoveis-layout {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        @media (max-width: 900px) {
+            .imoveis-layout { grid-template-columns: 1fr; }
+        }
+        .form-card {
+            background: #2d3748; /* Cor escura padrão do card */
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px border border-color #4a5568;
+            height: fit-content;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            color: #a0aec0;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            background: #1a202c;
+            border: 1px solid #4a5568;
+            border-radius: 6px;
+            color: #fff;
+            box-sizing: border-box;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: #3182ce;
+            outline: none;
+        }
+        .grid-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .imovel-card {
+            background: #2d3748;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            border: 1px solid #4a5568;
+            display: flex;
+            flex-direction: column;
+        }
+        .imovel-thumb {
+            height: 180px;
+            background: #1a202c;
+            position: relative;
+        }
+        .imovel-thumb img {
+            width: 100%;
+            height: 100%;
+            object-cover: cover;
+            object-fit: cover;
+        }
+        .imovel-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #fff;
+        }
+        .badge-planta { background: #38a169; }
+        .badge-usado { background: #dd6b20; }
+        .imovel-info {
+            padding: 15px;
+        }
+        .imovel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        .imovel-price {
+            color: #4299e1;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .imovel-carac {
+            background: #1a202c;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #e2e8f0;
+            margin-bottom: 10px;
+        }
+        .imovel-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        @media (max-width: 600px) {
+            .imovel-list { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <h2>Imobi<span>AI</span></h2>
+            <nav>
+                <a href="/" id="menu-leads" class="nav-link">Leads Qualificados</a>
+                <a href="/imoveis" id="menu-imoveis" class="nav-link active">Gerenciar Imóveis</a>
+                <a href="/#config" class="nav-link">Configurações do Bot</a>
+                <a href="/#historico" class="nav-link">Histórico de Chats</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header>
+                <h1>Controle da Carteira de Imóveis</h1>
+                <p>Cadastre e visualize os imóveis na planta e usados disponíveis para a IA trabalhar.</p>
+            </header>
+
+            <div class="imoveis-layout">
+                <div class="form-card">
+                    <h3 style="margin-top:0; margin-bottom:15px; color:#4299e1;">Novo Imóvel</h3>
+                    <form action="/cadastrar-imovel" method="POST">
+                        <div class="form-group">
+                            <label>Título do Empreendimento / Imóvel</label>
+                            <input type="text" name="titulo" required placeholder="Ex: Residencial Green View">
+                        </div>
+
+                        <div class="grid-row">
+                            <div class="form-group">
+                                <label>Tipo</label>
+                                <select name="tipo" required>
+                                    <option value="Planta">Na Planta</option>
+                                    <option value="Usado">Pronto / Usado</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Preço</label>
+                                <input type="text" name="preco" required placeholder="Ex: R$ 380.000">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Bairro / Localização</label>
+                            <input type="text" name="bairro" required placeholder="Ex: Jardim Europa, Nova Odessa">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Características Rápidas</label>
+                            <input type="text" name="caracteristicas" required placeholder="Ex: 2 qtos (1 suíte), 1 vaga, 65m²">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Link da Imagem (URL)</label>
+                            <input type="url" name="imagem_url" placeholder="https://exemplo.com/foto.jpg">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Descrição Detalhada</label>
+                            <textarea name="descricao" rows="4" required placeholder="Informações de lazer, diferenciais..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn-action" style="width: 100%;">Salvar Imóvel</button>
+                    </form>
+                </div>
+
+                <div>
+                    <h3 style="margin-top:0; margin-bottom:15px; display:flex; justify-content:space-between;">
+                        <span>Imóveis Cadastrados</span>
+                        <span style="font-size:0.8rem; background:#4a5568; padding:2px 8px; border-radius:10px; color:#fff;">
+                            {{ imoveis|length }} ativos
+                        </span>
+                    </h3>
+
+                    <div class="imovel-list">
+                        {% for imovel in imoveis %}
+                        <div class="imovel-card">
+                            <div class="imovel-thumb">
+                                {% if imovel.imagem_url %}
+                                    <img src="{{ imovel.imagem_url }}" alt="{{ imovel.titulo }}">
+                                {% else %}
+                                    <div style="display:flex; justify-content:center; align-items:center; height:100%; color:#4a5568; font-size:0.8rem;">Sem Foto</div>
+                                {% endif %}
+                                
+                                <span class="imovel-badge {% if imovel.tipo == 'Planta' %}badge-planta{% else %}badge-usado{% endif %}">
+                                    {% if imovel.tipo == 'Planta' %}Na Planta{% else %}Pronto{% endif %}
+                                </span>
+                            </div>
+                            <div class="imovel-info">
+                                <div class="imovel-header">
+                                    <h4 style="margin:0; font-size:1rem; color:#fff;">{{ imovel.titulo }}</h4>
+                                    <span class="imovel-price">{{ imovel.preco }}</span>
+                                </div>
+                                <p style="font-size:0.75rem; color:#a0aec0; margin: 0 0 10px 0;">📍 {{ imovel.bairro }}</p>
+                                <div class="imovel-carac">
+                                    📋 {{ imovel.caracteristicas }}
+                                </div>
+                                <p style="font-size:0.8rem; color:#cbd5e0; margin:0; line-clamp: 3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                                    {{ imovel.descricao }}
+                                </p>
+                            </div>
+                        </div>
+                        {% else %}
+                        <p style="color:#a0aec0; font-size:0.9rem;">Nenhum imóvel adicionado ainda.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
