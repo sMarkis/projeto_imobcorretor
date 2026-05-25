@@ -29,6 +29,19 @@ document.addEventListener("DOMContentLoaded", function () {
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 
+    // --- LÓGICA DO MENU MOBILE ---
+    const menuToggle = document.getElementById('menu-toggle');
+    const closeMenu = document.getElementById('close-menu');
+    const sidebar = document.getElementById('sidebar');
+
+    if (menuToggle && sidebar) {
+        menuToggle.addEventListener('click', () => sidebar.classList.add('active'));
+    }
+    
+    if (closeMenu && sidebar) {
+        closeMenu.addEventListener('click', () => sidebar.classList.remove('active'));
+    }
+
     const hash = window.location.hash;
     
     if (hash === '#config') {
