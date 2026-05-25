@@ -45,6 +45,7 @@ def init_db_auto():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             titulo TEXT NOT NULL,
             tipo TEXT NOT NULL,
+            categoria TEXT,
             bairro TEXT,
             preco TEXT,
             caracteristicas TEXT,
@@ -109,9 +110,9 @@ async def serve_home_cliente(request: Request, q: str = None):
         query = f"%{q}%"
         imoveis = conn.execute("""
             SELECT * FROM imoveis 
-            WHERE titulo LIKE ? OR bairro LIKE ? OR caracteristicas LIKE ? OR descricao LIKE ?
+            WHERE titulo LIKE ? OR bairro LIKE ? OR categoria LIKE ? OR caracteristicas LIKE ? OR descricao LIKE ?
             ORDER BY data_cadastro DESC
-        """, (query, query, query, query)).fetchall()
+        """, (query, query, query, query, query)).fetchall()
     else:
         imoveis = conn.execute("SELECT * FROM imoveis ORDER BY data_cadastro DESC").fetchall()
     conn.close()
@@ -190,6 +191,7 @@ async def cadastrar_imovel(
     id: str = Form(None),
     titulo: str = Form(...),
     tipo: str = Form(...),
+    categoria: str = Form(...),
     bairro: str = Form(...),
     preco: str = Form(...),
     caracteristicas: str = Form(...),
@@ -201,15 +203,15 @@ async def cadastrar_imovel(
     if id and id.strip() != "":
         conn.execute("""
             UPDATE imoveis 
-            SET titulo=?, tipo=?, bairro=?, preco=?, caracteristicas=?, descricao=?, imagem_url=?
+            SET titulo=?, tipo=?, categoria=?, bairro=?, preco=?, caracteristicas=?, descricao=?, imagem_url=?
             WHERE id=?
-        """, (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, int(id)))
+        """, (titulo, tipo, categoria, bairro, preco, caracteristicas, descricao, imagem_url, int(id)))
     else:
         data_atual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         conn.execute("""
-            INSERT INTO imoveis (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, data_cadastro)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (titulo, tipo, bairro, preco, caracteristicas, descricao, imagem_url, data_atual))
+            INSERT INTO imoveis (titulo, tipo, categoria, bairro, preco, caracteristicas, descricao, imagem_url, data_cadastro)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (titulo, tipo, categoria, bairro, preco, caracteristicas, descricao, imagem_url, data_atual))
     conn.commit()
     conn.close()
     

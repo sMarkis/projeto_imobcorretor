@@ -182,9 +182,14 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Preço</label>
-                                <input type="text" id="preco" name="preco" required placeholder="Ex: 380000" autocomplete="off">
+                                <label>Categoria (Ex: Casa, Apto)</label>
+                                <input type="text" id="categoria" name="categoria" required placeholder="Ex: Casa">
                             </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Preço</label>
+                            <input type="text" id="preco" name="preco" required placeholder="Ex: 380000" autocomplete="off">
                         </div>
 
                         <div class="form-group">
@@ -231,7 +236,7 @@
                                 {% endif %}
                                 
                                 <span class="imovel-badge {% if 'Planta' in imovel.tipo %}badge-planta{% else %}badge-usado{% endif %}">
-                                    {% if 'Ultimas' in imovel.tipo %}Últimas Unidades!{% elif imovel.tipo == 'Planta' %}Na Planta{% else %}Pronto{% endif %}
+                                    {{ imovel.categoria }}
                                 </span>
                             </div>
                             <div class="imovel-info">
@@ -246,7 +251,6 @@
                                 <p style="font-size:0.8rem; color:#cbd5e0; margin:0; line-clamp: 3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
                                     {{ imovel.descricao }}
                                 </p>
-                                <span class="raw-tipo" style="display:none;">{{ imovel.tipo }}</span>
                             </div>
                             
                             <div class="card-actions">

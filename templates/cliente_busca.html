@@ -20,6 +20,7 @@
         .chat-input-row input { flex: 1; padding: 8px; background: #1a202c; border: 1px solid #4a5568; border-radius: 4px; color: white; }
         .msg-user { color: #4299e1; text-align: right; margin-bottom: 8px; }
         .msg-bot { color: #48bb78; text-align: left; margin-bottom: 8px; }
+        .badge-categoria { background: #5a67d8; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; color: #fff; margin-bottom: 5px; display: inline-block; }
     </style>
 </head>
 <body style="background-color: #1a202c; color: white;">
@@ -31,7 +32,7 @@
         </header>
 
         <form action="/" method="GET" class="search-box">
-            <input type="text" name="q" value="{{ busca_atual }}" placeholder="Digite um bairro, tipo de imóvel ou característica...">
+            <input type="text" name="q" value="{{ busca_atual }}" placeholder="Digite categoria (Casa, Apto), bairro, ou característica...">
             <button type="submit">Buscar Imóveis</button>
         </form>
 
@@ -47,8 +48,11 @@
                     {% endif %}
                 </div>
                 <div class="imovel-info" style="padding: 15px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                         <h4 style="margin:0; color: #fff;">{{ imovel.titulo }}</h4>
+                    </div>
+                    <span class="badge-categoria">{{ imovel.categoria }}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                         <span style="color:#4299e1; font-weight:bold;">{{ imovel.preco }}</span>
                     </div>
                     <p style="font-size:0.75rem; color:#a0aec0; margin:0 0 10px 0;">📍 {{ imovel.bairro }}</p>
