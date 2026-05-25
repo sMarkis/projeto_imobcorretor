@@ -40,7 +40,10 @@ def get_db_connection():
 
 def init_db_auto():
     conn = get_db_connection()
-    conn.execute("""
+    cursor = conn.cursor()
+    
+    # Cria a tabela caso não exista
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS imoveis (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             titulo TEXT NOT NULL,
@@ -54,6 +57,13 @@ def init_db_auto():
             data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    
+    # Tenta adicionar a coluna categoria se ela não existir (evita erro 500 no Render)
+    try:
+        cursor.execute("ALTER TABLE imoveis ADD COLUMN categoria TEXT")
+    except sqlite3.OperationalError:
+        pass # A coluna já deve existir
+        
     conn.execute("""
         CREATE TABLE IF NOT EXISTS leads (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
