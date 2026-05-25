@@ -23,6 +23,12 @@ function switchTab(tabName) {
 
 // Escuta a URL ao carregar para chavear a aba certa vinda de outra página (Ex: /imoveis)
 document.addEventListener("DOMContentLoaded", function () {
+    // Limpa o parâmetro de busca vazio da URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('q') && urlParams.get('q') === "") {
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     const hash = window.location.hash;
     
     if (hash === '#config') {
