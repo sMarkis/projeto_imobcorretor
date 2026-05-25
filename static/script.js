@@ -123,12 +123,14 @@ function prepararEdicao(botao, id) {
     const caracteristicas = id_carac ? id_carac.innerText.replace('📋 ', '') : '';
     const descricao = card.querySelector('p:nth-of-type(2)').innerText;
     const tipo = card.querySelector('.raw-tipo').innerText;
+    const categoria = card.querySelector('.raw-categoria').innerText;
     const imgElement = card.querySelector('.imovel-thumb img');
     const imagem_url = imgElement ? imgElement.getAttribute('src') : '';
 
     document.getElementById('imovel-id').value = id;
     document.getElementById('titulo').value = titulo;
     document.getElementById('tipo').value = tipo;
+    document.getElementById('categoria').value = categoria;
     document.getElementById('preco').value = preco;
     document.getElementById('bairro').value = bairro;
     document.getElementById('caracteristicas').value = caracteristicas;
@@ -147,6 +149,8 @@ function prepararEdicao(botao, id) {
 function cancelarEdicao() {
     document.getElementById('imovel-id').value = "";
     document.getElementById('titulo').value = "";
+    document.getElementById('tipo').value = "Planta";
+    document.getElementById('categoria').value = "Casa";
     document.getElementById('preco').value = "";
     document.getElementById('bairro').value = "";
     document.getElementById('caracteristicas').value = "";

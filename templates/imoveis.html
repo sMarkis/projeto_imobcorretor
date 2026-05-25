@@ -183,7 +183,13 @@
                             </div>
                             <div class="form-group">
                                 <label>Categoria</label>
-                                <input type="text" id="categoria" name="categoria" required placeholder="Ex: Casa">
+                                <select id="categoria" name="categoria" required>
+                                    <option value="Casa">Casa</option>
+                                    <option value="Apartamento">Apartamento</option>
+                                    <option value="Terreno">Terreno</option>
+                                    <option value="Sítio">Sítio</option>
+                                    <option value="Chácara">Chácara</option>
+                                </select>
                             </div>
                         </div>
 
@@ -251,6 +257,8 @@
                                 <p style="font-size:0.8rem; color:#cbd5e0; margin:0; line-clamp: 3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
                                     {{ imovel.descricao }}
                                 </p>
+                                <span class="raw-tipo" style="display:none;">{{ imovel.tipo }}</span>
+                                <span class="raw-categoria" style="display:none;">{{ imovel.categoria }}</span>
                             </div>
                             
                             <div class="card-actions">
