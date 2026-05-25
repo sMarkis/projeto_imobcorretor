@@ -49,11 +49,11 @@
                         </div>
                         
                         {% if lead.telefone %}
-                            <a href="https://wa.me/55{{ lead.telefone|replace('(', '').replace(')', '').replace('-', '').replace(' ', '') }}" target="_blank" class="btn-action" style="text-decoration: none; display: block; text-align: center; background: #25d366; color: white; margin-top: 10px;">
+                            <a href="https://wa.me/55{{ lead.telefone }}" target="_blank" class="btn-action" style="text-decoration: none; display: block; text-align: center; background: #25d366; color: white; margin-top: 10px;">
                                 💬 Assumir no WhatsApp
                             </a>
                         {% else %}
-                            <button class="btn-action secondary" disabled>Dados incompletos</button>
+                            <button class="btn-action secondary" disabled>Aguardando dados...</button>
                         {% endif %}
                     </div>
                     {% else %}
