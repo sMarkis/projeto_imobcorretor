@@ -280,7 +280,8 @@ async def receive_whatsapp_message(payload: WhatsAppMessage):
         regras_ouro = (
             f"\n[HISTÓRICO RECENTE]: {contexto_conversa}\n"
             f"[REGRAS DE OURO]: 1. O cliente chama-se {user_name}. 2. Analise o histórico acima e NUNCA repita perguntas já respondidas. "
-            "3. Seja extremamente direto, profissional e focado em vendas. 4. Se o cliente solicitar agendamento, marque como lead quente."
+            "3. Seja extremamente direto, profissional e focado em vendas. 4. ESTA É UMA REGRA CRÍTICA: Você NÃO tem permissão para agendar visitas ou definir horários. "
+            "Sempre que o cliente quiser agendar algo, diga: 'Um de nossos corretores entrará em contato em breve para realizar o agendamento pessoalmente'."
         )
         
         response = client.models.generate_content(
@@ -293,8 +294,13 @@ async def receive_whatsapp_message(payload: WhatsAppMessage):
         )
         bot_reply = response.text
         
+        # FILTRO DE SEGURANÇA: Trava de agendamento (Impede a IA de marcar horários)
+        palavras_agendamento = ['agendar', 'visita', 'horário', 'data', 'marcar', 'quando posso']
+        if any(palavra in bot_reply.lower() for palavra in palavras_agendamento):
+            bot_reply = "Entendido! Vou repassar seu interesse para nossa equipe e um de nossos corretores entrará em contato em breve para realizar o agendamento pessoalmente."
+        
         # Lógica de marcação de status
-        if any(word in user_message.lower() for word in ['agendar', 'horário', 'correto', 'confirmado', 'ligar']):
+        if any(word in user_message.lower() for word in ['agendar', 'visita', 'interesse', 'queria saber']):
             conn.execute("UPDATE leads SET status = 'hot' WHERE id = ?", (lead_id,))
         
         conn.execute("INSERT INTO chat_history (lead_id, papel, mensagem) VALUES (?, 'assistant', ?)", 
