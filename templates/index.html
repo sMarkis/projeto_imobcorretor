@@ -47,10 +47,13 @@
                             <p><strong>WhatsApp:</strong> {{ lead.telefone }}</p>
                             <p><strong>Data de Entrada:</strong> {{ lead.data_criacao }}</p>
                         </div>
-                        {% if lead.status == 'hot' %}
-                            <a href="https://wa.me/55{{ lead.telefone }}" target="_blank" class="btn-action" style="text-decoration: none; display: block; text-align: center; background: #25d366; color: white;">Assumir no WhatsApp</a>
+                        
+                        {% if lead.telefone %}
+                            <a href="https://wa.me/55{{ lead.telefone|replace('(', '').replace(')', '').replace('-', '').replace(' ', '') }}" target="_blank" class="btn-action" style="text-decoration: none; display: block; text-align: center; background: #25d366; color: white; margin-top: 10px;">
+                                💬 Assumir no WhatsApp
+                            </a>
                         {% else %}
-                            <button class="btn-action secondary" disabled>Bot Conversando...</button>
+                            <button class="btn-action secondary" disabled>Dados incompletos</button>
                         {% endif %}
                     </div>
                     {% else %}
