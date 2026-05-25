@@ -129,16 +129,14 @@ header h1 {
    NOVAS REGRAS: Alternância de Abas e Telas
    ========================================== */
 
-/* Alternância de Visibilidade */
 .tab-content {
-    display: none; /* Esconde as telas por padrão */
+    display: none; 
 }
 
 .tab-content.active-content {
-    display: block; /* Mostra apenas a tela selecionada */
+    display: block; 
 }
 
-/* Configurações do Bot */
 .config-container {
     background: var(--bg-card);
     padding: 2rem;
@@ -147,7 +145,6 @@ header h1 {
     max-width: 800px;
 }
 
-/* ALTERAÇÃO FEITA AQUI: margem aumentada para dar o espaço de 3 linhas */
 .config-card h3 { 
     margin-bottom: 2rem; 
 }
@@ -169,7 +166,6 @@ header h1 {
     margin-bottom: 1rem;
 }
 
-/* Histórico de Chats */
 .history-container {
     background: var(--bg-card);
     border-radius: 8px;
@@ -233,8 +229,12 @@ header h1 {
         position: fixed;
         left: -300px;
         top: 0;
+        width: 260px;
+        height: 100%;
         transition: 0.3s;
         z-index: 2001;
+        display: flex;
+        flex-direction: column;
     }
     
     .sidebar.active {
